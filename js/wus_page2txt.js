@@ -136,7 +136,18 @@ function getextfromweb(models,task){
   alert("get text2file succfully")
 }
 
-function startask(){
-  task={"model":"biquge","rootpage":"http://www.biquge.com.tw/18_18186/","store":"/tmp/魔教.txt","lastchap":0}
-  getextfromweb(models,task);
-}
+// commands
+document.addEventListener('click', ({target}) => {
+  const cmd = target.dataset.cmd;
+  if (cmd === 'start') {
+    getextfromweb(models,task);
+  }
+  else if (cmd === 'close') {
+    chrome.runtime.sendMessage({
+      cmd: 'close-me'
+    });
+  }
+  else if (cmd === 'restart') {
+    window.location.reload();
+  }
+});
