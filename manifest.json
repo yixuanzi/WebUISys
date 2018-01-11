@@ -4,23 +4,22 @@
   "name": "WebUiSys",
   "description": "This extension allows the user to change the background color of the current page.",
   "version": "1.0",
-
   "background": {
     "persistent": false,
     "scripts":[
-      "js/jquery.min.js",
-      "js/bundle.js",
-      "js/wus_page2txt.js"
+      "js/jquery.min.js"
     ]
   },
   "browser_action": {
     "default_icon": "icon.png",
-    "default_popup": "WebUISys_txtonline.html"
+    "default_popup": "wus_popup.html"
   },
   "permissions": [
     "activeTab",
     "storage",
     "<all_urls>",
-    "downloads"
+    "tabs",
+    "downloads",
+    "downloads.open"
   ]
 }
