@@ -1,62 +1,47 @@
-function getpagewithajax(url,asyc=false){
-      var page;
-      $.ajax({
-          url: url,
-          type: "GET",
-          async: asyc,
-          success: function(data){
-              page=data;
-          }
-      });
-      return page;
-}
+// ==UserScript==
+// @name         WebUISys TxtOnLine
+// @namespace    yixuanzi
+// @version      1.0.0
+// @description  通过指定任务结构，实现对网页文本内容进行批量下载
+// @author       yixuanzi
+// @match *://*/*
+// @require    http://cdn.bootcss.com/jquery/1.8.3/jquery.min.js
+// @require    https://greasyfork.org/scripts/37280-wusconfig/code/wusconfig.js?version=242689
+// @require    https://greasyfork.org/scripts/37279-htmlparser2/code/htmlparser2.js?version=242688
+// @grant    GM_getValue
+// @grant    GM_setValue
+// @grant    unsafeWindow
+// @grant    GM_xmlhttpRequest
+// @grant    GM_openInTab
+// ==/UserScript==
 
-function getpagewithxhr(url,asyc=false){
-  var xhr = new XMLHttpRequest();
+//task={"model":"3344ui","rootpage":["https://www.3344ui.com/xiaoshuoqu/qinggan/index_2.html"],"store":"ebook/3344ui.txt","lastchap":0,"chaperlength":0}
+task=null
+flag=false //表示是否有一个任务在执行
+
+
+function getpagewithgmxhr(url,sync=true){
   var page;
-  xhr.onreadystatechange = function(){
-    if (xhr.readyState == 4) {
-      page=xhr.responseText
-    }else{
-      page="FAIL"
+  GM_xmlhttpRequest({
+    method: 'GET',
+    url: url,
+    synchronous:sync,
+    onload: function(result) {
+      page=result.responseText;
     }
-  }
-  //chrome.extension.getURL(url)
-  //xhr.open("GET", url, asyc);
-  xhr.open("GET", url, asyc);
-
-  if(task.hasOwnProperty('encode')){
-    xhr.setRequestHeader("Content-type","application/html; charset="+task.encode);
-  }
-  xhr.send();
-  return page;
+  });
+  return page
 }
 
-var ua = navigator.userAgent.toLowerCase();
-if (/firefox/.test(ua)) {
-    uatype=1
-}else if (/chrome/.test(ua)) {
-    uatype=2
-}
 
 function getpagefromURL(url){
-  if (uatype==1) {
-      return getpagewithxhr(url) //firefox在扩展中貌似对ajax跨域请求不支持，只能暂时使用xhr，且在firefox存在编码问题
-  }else if (uatype==2) {
-      return getpagewithajax(url) //chrome 中各种正常
-  }
+  return getpagewithgmxhr(url)
 }
 
 function loadjs(jsurl){
   document.write('<script language="javascript" src="'+jsurl+'" > <\/script>');
 }
 
-
-
-//---------------------------------------------------------------------------------------------
-//task={"model":"biquge","rootpage":"list.html","store":"魔教.txt","lastchap":5,"chaperlength":5,'encode':'gbk'}
-task=null
-flag=false //表示是否有一个任务在执行
 //js 读取文件
 function jsReadFiles() {
   files=this.files
@@ -172,10 +157,10 @@ function downdata2file(models,task,chaplist){
   }
   var objblob=new Blob(filedata,{type:'application/text'})
   var downloadurl = URL.createObjectURL(objblob)
-  chrome.downloads.download({url:downloadurl,filename:task.store,conflictAction:'uniquify',saveAs: true}, () => {
-    window.setTimeout(() => URL.revokeObjectURL(downloadurl), 3000); //释放url对应的数据对象
-  })
-  //downLoad(downloadurl)
+  //chrome.downloads.download({url:downloadurl,filename:task.store,conflictAction:'uniquify',saveAs: true}, () => {
+  //  window.setTimeout(() => URL.revokeObjectURL(downloadurl), 3000); //释放url对应的数据对象
+  //})
+  downLoad(downloadurl)
 
 }
 
@@ -183,6 +168,7 @@ function getextfromweb(models,task){
   if(flag){
     return
   }
+  alert("start....")
   if (task!=null){
     flag=true
     var chaplist=getchaplist(models,task)
@@ -195,40 +181,6 @@ function getextfromweb(models,task){
   }
 }
 
-//==============================================================================
-$(document).ready(function(){
-  $("#bget").click(function(){
-    pagedata=getpagefromURL("list.html");
-    $("#p1").html(pagedata);
-  });
-  $("#balert").click(function(){
-    alert(document.domain)
-  });
-  $("#bshow").click(function(){
-    $("#p1").show()
-  });
-  $("#bhide").click(function(){
-    $("#p1").hide()
-  });
-
-  const inputElement = document.getElementById("inputfile");
-  inputElement.addEventListener("change", jsReadFiles, false);
-
-});
-
-// commands
-document.addEventListener('click', ({target}) => {
-  const cmd = target.dataset.cmd;
-  if (cmd === 'start') {
-    getextfromweb(models,task);
-  }
-  else if (cmd === 'close') {
-    chrome.runtime.sendMessage({
-      cmd: 'close-me'
-    });
-  }
-  else if (cmd === 'restart') {
-    window.location.reload();
-  }
-});
-//document.write('</br></br>choose task file:   <input type="file" onchange="jsReadFiles(this.files)"/>')
+if (window.confirm(`Start a task with config,\nAre you sure?`)) {
+  getextfromtag(models,task)
+}
