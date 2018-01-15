@@ -3,6 +3,7 @@ function getpagewithajax(url,asyc=false){
       $.ajax({
           url: url,
           type: "GET",
+          timeout: 5000,
           async: asyc,
           success: function(data){
               page=data;
@@ -13,6 +14,7 @@ function getpagewithajax(url,asyc=false){
 
 function getpagewithxhr(url,asyc=false){
   var xhr = new XMLHttpRequest();
+  xhr.timeout = 5000;
   var page;
   xhr.onreadystatechange = function(){
     if (xhr.readyState == 4) {
@@ -84,19 +86,33 @@ function downLoad(url){
 function getextfromtag(tag,type=1){ //1:get the first text data 2:get the all of text data
   //&nbsp;
   var rs=""
-  var node
   if (!tag.hasOwnProperty("children")){
     return rs
   }
-  for(i in tag.children){
-    node=tag.children[i]
-    if (node.type=='text'){
-      if(type==1){
+  if(type==1){
+    var node
+    for(i in tag.children){
+      node=tag.children[i]
+      if (node.type =='text'){
         return node.data.replace(/(&nbsp;|\s)/g,'')
-      }else if (type==2) {
-        rs+=(node.data.replace(/(&nbsp;|\s)/g,' ')+"\n");
       }
     }
+  }else if (type==2) {
+    function processtag(ctag){
+      var node
+      if((!ctag.hasOwnProperty("children")) || ctag.children.length<=0){
+        return
+      }
+      for(i in ctag.children){
+        node=ctag.children[i]
+        if (node.type=='text'){
+          rs+=(node.data.replace(/(&nbsp;|\s)/g,' ')+"\n");
+        }else{
+          processtag(node)
+        }
+      }
+    }
+    processtag(tag)
   }
   return rs
 }
@@ -104,11 +120,12 @@ function getextfromtag(tag,type=1){ //1:get the first text data 2:get the all of
 function getchaplist(models,task){
   if (models.hasOwnProperty(task.model)){
     var chaplist=new Array()
-    var name,tag,url,rootpage
+    var name,tag,url,rootpage,currentpage
     var model=models[task.model]
     model.chapurl=new RegExp(model.chapurl) //covert the regexp
     for (var i in task.rootpage){ //支持多个rootpage页面同时下载，但是结果会下载到一个文件中
       rootpage=task.rootpage[i]
+      currentpage=rootpage.split('/').slice(0,-1).join('/')
       var page=getpagefromURL(rootpage) //get the page data
       var htmlobj=cheerio.parseHTML(page) //parse the html base cherrio
       var scope=cheerio(model.chapscope,htmlobj) //get the chaplist scope with tag
@@ -121,6 +138,13 @@ function getchaplist(models,task){
         tag=alist[i]
         url=tag.attribs['href'].replace(/(&nbsp;|\s)/g,'')
         if (model.chapurl.test(url)){
+          if(!/^https?/.test(url)){
+            if(/^\//.test(url)){
+              url=model.web+url
+            }else{
+              url=currentpage+'/'+url
+            }
+          }
           name=getextfromtag(tag)
           chaplist.push({'name':name,'url':url})
         }
@@ -152,9 +176,6 @@ function downdata2file(models,task,chaplist){
 
   for(var i=task.lastchap;i<chaperlen;i++){ //update the data from lastchaper
     url=chaplist[i].url
-    if (!/^https?:/.test(url)){
-      url=model.web+url
-    }
     console.log(chaplist[i].name+':'+url)
     page=getpagefromURL(url)
     htmlobj=cheerio.parseHTML(page)
