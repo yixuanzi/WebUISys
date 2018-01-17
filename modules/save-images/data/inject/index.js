@@ -172,6 +172,7 @@ function update() {
 }
 
 chrome.runtime.onMessage.addListener((request, sender) => {
+  console.log("Have event:"+request.cmd)
   if (request.cmd === 'progress') {
     elements.counter.progress.dataset.visible = true;
     elements.counter.progress.value = elements.counter.progress.max - request.value;
@@ -179,6 +180,8 @@ chrome.runtime.onMessage.addListener((request, sender) => {
   else if (request.cmd === 'found-images') {
     if (sender.tab) {
       // prevent duplication
+      console.log("found-images list:")
+      request.images.forEach(img=>{console.log(img.src)})
       return;
     }
     request.images.forEach(img => {
@@ -206,22 +209,30 @@ chrome.runtime.onMessage.addListener((request, sender) => {
     update();
   }
   else if (request.cmd === 'found-links') {
+    console.log("found-links list:")
+    request.links.forEach(url=>{console.log(url)})
     port.postMessage(request);
   }
 });
-var search = () => chrome.runtime.sendMessage({
-  cmd: 'get-images',
-  deep: Number(elements.deep.level.value)
-}, result => {
-  domain = result.domain;
-  if (result.diSupport) {
-    elements.save.directory.value = domain;
-  }
-  else {
-    elements.save.directory.disabled = true;
-  }
-});
-document.addEventListener('DOMContentLoaded', search);
+
+function search(){
+  var sending=chrome.runtime.sendMessage({
+    cmd: 'get-images',
+    deep: Number(elements.deep.level.value)
+  }, result => {
+    domain = result.domain;
+    console.log("search the images from page...")
+    if (result.diSupport) {
+      elements.save.directory.value = domain;
+    }
+    else {
+      elements.save.directory.disabled = true;
+    }
+  })
+}
+
+
+document.addEventListener('DOMContentLoaded',search);
 elements.deep.level.addEventListener('change', search);
 
 // commands

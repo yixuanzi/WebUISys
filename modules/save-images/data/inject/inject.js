@@ -33,6 +33,10 @@ window.iframe.setAttribute('style', `
 `);
 window.iframe.src = chrome.runtime.getURL('data/inject/index.html');
 document.body.appendChild(window.iframe);
+//chrome.tabs.create({
+//url: "/modules/save-images/data/inject/index.html",
+//active: true
+//});
 
 (callback => {
   document.addEventListener('click', e => {

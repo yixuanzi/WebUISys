@@ -120,6 +120,7 @@ var download = (() => {
 })();
 
 chrome.runtime.onConnect.addListener(port => {
+  console.log("Have a connect port from silde")
   let links = [];
   let cache = {};
   port.onDisconnect.addListener(() => {
@@ -212,6 +213,7 @@ chrome.runtime.onConnect.addListener(port => {
 });
 
 chrome.runtime.onMessage.addListener((request, sender, response) => {
+  console.log("Have event:"+request.cmd)
   if (request.cmd === 'image-data') {
     // data URI
     if (request.src.startsWith('data:')) {

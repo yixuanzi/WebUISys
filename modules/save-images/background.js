@@ -27,6 +27,7 @@ const onClicked = tab => {
 };
 chrome.browserAction.onClicked.addListener(onClicked);
 
+/*
 // FAQs & Feedback
 chrome.storage.local.get({
   'version': null,
@@ -61,3 +62,4 @@ chrome.storage.local.get({
     chrome.runtime.getManifest().homepage_url + '?rd=feedback&name=' + name + '&version=' + version
   );
 }
+*/

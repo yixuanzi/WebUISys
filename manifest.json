@@ -17,6 +17,8 @@
   "permissions": [
     "activeTab",
     "storage",
+    "contextMenus",
+    "notifications",
     "<all_urls>",
     "tabs",
     "downloads",

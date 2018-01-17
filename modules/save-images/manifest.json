@@ -38,7 +38,6 @@
   "web_accessible_resources": [
     "data/inject/index.html"
   ],
-  "homepage_url": "http://add0n.com/save-images.html",
   "applications": {
     "gecko": {
       "id": "{32af1358-428a-446d-873e-5f8eb5f2a72e}"

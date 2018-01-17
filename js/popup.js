@@ -8,8 +8,11 @@ $(document).ready(function(){
       active: true
       });
     }
-    else if (cmd === 'test') {
-      alert("this is a test")
+    else if (cmd === 'imagesdown') {
+      chrome.tabs.create({
+      url: "/modules/save-images/data/inject/index.html",
+      active: true
+      });
     }
   });
 });
