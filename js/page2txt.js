@@ -1,74 +1,41 @@
-function getpagewithajax(url,asyc=false){
-      var page;
+function getpagewithgmxhr(url,callback){
+  var page;
+  GM_xmlhttpRequest({
+    method: 'GET',
+    url: url,
+    timeout:5000,
+    onload: function(result) {
+      page=result.responseText;
+      callback(page);
+    }
+  });
+}
+
+function getpagewithajax(url,callback){
       $.ajax({
           url: url,
           type: "GET",
           timeout: 5000,
-          async: asyc,
           success: function(data){
-              page=data;
+              callback(data);
           }
       });
-      return page;
 }
 
-function getpagewithxhr(url,asyc=false){
-  var xhr = new XMLHttpRequest();
-  xhr.timeout = 5000;
-  var page;
-  xhr.onreadystatechange = function(){
-    if (xhr.readyState == 4) {
-      page=xhr.responseText
-    }else{
-      page="FAIL"
-    }
-  }
-  //chrome.extension.getURL(url)
-  //xhr.open("GET", url, asyc);
-  xhr.open("GET", url, asyc);
-
-  if(task.hasOwnProperty('encode')){
-    xhr.setRequestHeader("Content-type","application/html; charset="+task.encode);
-  }
-  xhr.send();
-  return page;
-}
-
-var ua = navigator.userAgent.toLowerCase();
-if (/firefox/.test(ua)) {
-    uatype=1
-}else if (/chrome/.test(ua)) {
-    uatype=2
-}
-
-function getpagefromURL(url){
-  if (uatype==1) {
-      return getpagewithxhr(url) //firefox在扩展中貌似对ajax跨域请求不支持，只能暂时使用xhr，且在firefox存在编码问题
-  }else if (uatype==2) {
-      return getpagewithajax(url) //chrome 中各种正常
-  }
-}
-
-function loadjs(jsurl){
-  document.write('<script language="javascript" src="'+jsurl+'" > <\/script>');
+function getpagefromURL(url,callback){
+  //return getpagewithmxhr(url,callback) //monkey plugins javascript
+  return getpagewithajax(url,callback) // browser plugin with ajax
 }
 
 
 
-//---------------------------------------------------------------------------------------------
-//task={"model":"biquge","rootpage":"list.html","store":"魔教.txt","lastchap":5,"chaperlength":5,'encode':'gbk'}
-task=null
-flag=false //表示是否有一个任务在执行
 //js 读取文件
-function jsReadFiles() {
-  files=this.files
-        if (files.length) {
+function jsReadFiles(files,callback) {
+  if (files.length) {
             var file = files[0];
             var reader = new FileReader();//new一个FileReader实例
-
             reader.onload = function() {
-                    $("#jstxt").html("task config:</br><pre>" + this.result + '</pre>');
-                    task=JSON.parse(this.result)
+              callback(this.result)
             }
             reader.readAsText(file);
     }
@@ -116,140 +83,219 @@ function getextfromtag(tag,type=1){ //1:get the first text data 2:get the all of
   }
   return rs
 }
+//////////////////////////////////////////////////////////////////
+function getextfromweb(models,task){
+  if (!models.hasOwnProperty(task.model)){
+    alert("没有正确的数据模式，请提供！")
+    return
+  }
 
-function getchaplist(models,task){
-  if (models.hasOwnProperty(task.model)){
-    var chaplist=new Array()
-    var name,tag,url,rootpage,currentpage
-    var model=models[task.model]
-    model.chapurl=new RegExp(model.chapurl) //covert the regexp
-    for (var i in task.rootpage){ //支持多个rootpage页面同时下载，但是结果会下载到一个文件中
-      rootpage=task.rootpage[i]
-      currentpage=rootpage.split('/').slice(0,-1).join('/')
-      var page=getpagefromURL(rootpage) //get the page data
-      var htmlobj=cheerio.parseHTML(page) //parse the html base cherrio
-      var scope=cheerio(model.chapscope,htmlobj) //get the chaplist scope with tag
-      if(scope.length<=0){
-        alert("have a unknow error,can't get the vaild content scope!!!")
-        return
-      }
-      var alist=scope.find('a') //get the href from the scope
-      for(var i=0;i<alist.length;i++){
-        tag=alist[i]
-        url=tag.attribs['href'].replace(/(&nbsp;|\s)/g,'')
-        if (model.chapurl.test(url)){
-          if(!/^https?/.test(url)){
-            if(/^\//.test(url)){
-              url=model.web+url
-            }else{
-              url=currentpage+'/'+url
+  if(!task){
+    alert("You must input vaild task fille!!!")
+    return
+  }
+
+  printlog("A task is running......")
+  var flag=false //表示是否有一个任务在执行
+  var chaplist=new Array()
+  var name,tag,url,rootpage,page,htmlobj,scope,contentext,name,chaperlen,prefix,chapersum,currentpage
+  var filedata=new Array()
+  var chaperint=task.lastchap
+  var model=models[task.model]
+  model.chapurl=new RegExp(model.chapurl) //covert the regexp
+
+  function getchaplist(models,task){
+      rootpage=task.rootpage.shift()
+      if(!rootpage){
+        if (!window.confirm(`The Online txt have ${chaplist.length} chaper,\nyou last chaper is ${task.lastchap},\nthis have ${chaplist.length-task.lastchap} chaper to update!\nAre you sure?`)) {
+          return
+        }
+        //chaplist.length;
+        if (task.hasOwnProperty('chaperlength') && task.chaperlength>0){
+          chaperlen=task.chaperlength+task.lastchap
+        }else{
+          chaperlen=chaplist.length
+        }
+        chaplist=chaplist.slice(task.lastchap,chaperlen)
+        //downdata2file(models,task,chaplist)
+        multdowndata2file(models,task,chaplist)
+      }else{
+        printlog("get chaper list with: "+rootpage)
+        currentpage=rootpage.split('/').slice(0,-1).join('/')
+        getpagefromURL(rootpage,function(page){
+          htmlobj=cheerio.parseHTML(page) //parse the html base cherrio
+          scope=cheerio(model.chapscope,htmlobj) //get the chaplist scope with tag
+          if(scope.length<=0){
+            alert("have a unknow error,can't get the vaild content scope!!!")
+            return
+          }
+          var alist=scope.find('a') //get the href from the scope
+          for(var i=0;i<alist.length;i++){
+            tag=alist[i]
+            url=tag.attribs['href'].replace(/(&nbsp;|\s)/g,'')
+            if (model.chapurl.test(url)){
+              if(!/^https?/.test(url)){
+                if(/^\//.test(url)){
+                   url=model.web+url
+                }else{
+                  url=currentpage+'/'+url
+                }
+              }
+              name=getextfromtag(tag)
+              chaplist.push({'name':name,'url':url,'index':i})
             }
           }
-          name=getextfromtag(tag)
-          chaplist.push({'name':name,'url':url})
+          getchaplist(models,task)
+        })
+      }
+  }
+
+  /////
+  function downdata2file(models,task,chaplist){
+      var chaperinfo=chaplist.shift()
+      if(chaperinfo){
+        url=chaperinfo.url
+        name=chaperinfo.name
+        getpagefromURL(url,function(page){
+          htmlobj=cheerio.parseHTML(page)
+          scope=cheerio(model.content,htmlobj)
+          if(scope.length<=0){
+            alert("have a unknow error,can't get the vaild content scope!!!")
+            return
+          }
+          contentext=getextfromtag(scope[0],2)
+          printlog(name+':'+url+':'+page.length.toString()+':'+contentext.length.toString())
+
+          prefix="第"+(chaperint+1).toString()+"章 "
+          //contentext = nodeiconv.encode(contentext, 'utf8')
+          filedata.push(prefix+name+'\n')
+          filedata.push(contentext+'\n')
+          chaperint++
+          downdata2file(models,task,chaplist)
+        })
+      }else{
+        printlog("download the file with blob url")
+        var objblob=new Blob(filedata,{type:'application/text'})
+        var downloadurl = URL.createObjectURL(objblob)
+
+        chrome.downloads.download({url:downloadurl,filename:task.store,conflictAction:'uniquify',saveAs: true}, () => {
+          window.setTimeout(() => URL.revokeObjectURL(downloadurl), 3000); //释放url对应的数据对象
+        })
+        //downLoad(downloadurl) //download with js
+      }
+  }
+
+  /////
+  function multdowndata2file(models,task,chaplist,nums=8){
+      var tasklen=chaplist.length
+      var startask=0
+      var endtask=0
+
+      //执行单个任务的函数
+      function onedowndata2file(models,task,chaplist){
+        var chaperinfo=chaplist.shift()
+        if(!chaperinfo){
+          return
         }
+        startask++
+        var url=chaperinfo.url
+        var name=chaperinfo.name
+        var index=chaperinfo.index
+        getpagefromURL(url,function(page){
+          htmlobj=cheerio.parseHTML(page)
+          scope=cheerio(model.content,htmlobj)
+          if(scope.length<=0){
+            alert("have a unknow error,can't get the vaild content scope!!!")
+            return
+          }
+          contentext=getextfromtag(scope[0],2)
+          printlog(name+':'+url+':'+page.length.toString()+':'+contentext.length.toString())
+          filedata[index]={"name":name+'\n',"text":contentext+'\n'}
+          endtask++
+
+          if(startask<tasklen){
+            onedowndata2file(models,task,chaplist)
+          }
+          if(endtask>=tasklen && startask==endtask){
+            fromdata2file()
+          }
+        })
+      }
+
+      //from data to file
+      function fromdata2file(){
+        printlog("download the file with blob url")
+        var sortfiledata=new Array()
+        for(var i in filedata){
+          prefix="第"+(chaperint+1).toString()+"章 "
+          //printlog("sort:"+prefix+filedata[i].name)
+          sortfiledata.push(prefix+filedata[i].name)
+          sortfiledata.push(filedata[i].text)
+          chaperint++
+        }
+
+        var objblob=new Blob(sortfiledata,{type:'application/text'})
+        var downloadurl = URL.createObjectURL(objblob)
+
+        if(agentflag=="PC"){
+          chrome.downloads.download({url:downloadurl,filename:task.store,conflictAction:'uniquify',saveAs: true}, () => {
+            window.setTimeout(() => URL.revokeObjectURL(downloadurl), 3000); //释放url对应的数据对象
+          })
+        }else{
+            downLoad(downloadurl) //download with js
+        }
+      }
+
+      if (tasklen<nums){
+        nums=tasklen
+      }
+      for (var i=0;i<nums;i++){
+        onedowndata2file(models,task,chaplist)
       }
     }
 
-    //console.log("get the chaper number is:"+chaplist.length)
-    //if(uatype==2){
-    //    alert("get the chapers number is:"+chaplist.length)
-    //}
-    return chaplist
-  }
-  alert("没有正确的数据模式，请提供！")
+  getchaplist(models,task)
 }
 
-function downdata2file(models,task,chaplist){
-  if (!window.confirm(`The Online txt have ${chaplist.length} chaper,\nyou last chaper is ${task.lastchap},\nthis have ${chaplist.length-task.lastchap} chaper to update!\nAre you sure?`)) {
-    return
-  }
-  var model=models[task.model]
-  var page,htmlobj,scope,contentext,name,chaperlen,prefix,chapersum
-  var filedata=new Array()
-  //chaplist.length;
-  if (task.hasOwnProperty('chaperlength') && task.chaperlength>0){
-    chaperlen=task.chaperlength+task.lastchap
-  }else{
-    chaperlen=chaplist.length
-  }
 
-  for(var i=task.lastchap;i<chaperlen;i++){ //update the data from lastchaper
-    url=chaplist[i].url
-    console.log(chaplist[i].name+':'+url)
-    page=getpagefromURL(url)
-    htmlobj=cheerio.parseHTML(page)
-    scope=cheerio(model.content,htmlobj)
-    if(scope.length<=0){
-      alert("have a unknow error,can't get the vaild content scope!!!")
-      return
-    }
-    name=chaplist[i].name
-    contentext=getextfromtag(scope[0],2)
-    prefix="第"+(i+1).toString()+"章 "
-    //contentext = nodeiconv.encode(contentext, 'utf8')
-    filedata.push(prefix+name+'\n')
-    filedata.push(contentext+'\n')
-  }
-  var objblob=new Blob(filedata,{type:'application/text'})
-  var downloadurl = URL.createObjectURL(objblob)
-  chrome.downloads.download({url:downloadurl,filename:task.store,conflictAction:'uniquify',saveAs: true}, () => {
-    window.setTimeout(() => URL.revokeObjectURL(downloadurl), 3000); //释放url对应的数据对象
+
+//================================
+function printlog(msg){
+  //console.log(msg)
+  $("#log").html(function(i,origText){
+    return origText+"<br>"+msg
   })
-  //downLoad(downloadurl)
-
 }
 
-function getextfromweb(models,task){
-  if(flag){
-    return
-  }
-  if (task!=null){
-    flag=true
-    var chaplist=getchaplist(models,task)
-    if (chaplist){
-        downdata2file(models,task,chaplist)
-    }
-    flag=false
-  }else{
-    alert("You must input vaild task fille!!!")
-  }
-}
-
-//==============================================================================
+//===================================
 $(document).ready(function(){
-  $("#bget").click(function(){
-    pagedata=getpagefromURL("list.html");
-    $("#p1").html(pagedata);
+  var ua = navigator.userAgent
+  if(/Android|iPhone/i.test(ua)){
+    agentflag="Mobile"
+  }else{
+    agentflag="PC"
+  }
+  // commands
+  document.addEventListener('click', ({target}) => {
+    const cmd = target.dataset.cmd;
+    if (cmd === 'start') {
+      getextfromweb(models,task);
+    }
+    else if (cmd === 'close') {
+      chrome.runtime.sendMessage({
+        cmd: 'close-me'
+      });
+    }
+    else if (cmd === 'restart') {
+      window.location.reload();
+    }
   });
-  $("#balert").click(function(){
-    alert(document.domain)
-  });
-  $("#bshow").click(function(){
-    $("#p1").show()
-  });
-  $("#bhide").click(function(){
-    $("#p1").hide()
-  });
-
+  //file browser
   const inputElement = document.getElementById("inputfile");
-  inputElement.addEventListener("change", jsReadFiles, false);
-
+  inputElement.addEventListener("change", function(){
+    jsReadFiles(this.files,function(filedata){
+      task=JSON.parse(filedata)
+      $("#log").html("<pre>"+filedata+"</pre>")
+    })
+  }, false);
 });
-
-// commands
-document.addEventListener('click', ({target}) => {
-  const cmd = target.dataset.cmd;
-  if (cmd === 'start') {
-    getextfromweb(models,task);
-  }
-  else if (cmd === 'close') {
-    chrome.runtime.sendMessage({
-      cmd: 'close-me'
-    });
-  }
-  else if (cmd === 'restart') {
-    window.location.reload();
-  }
-});
-//document.write('</br></br>choose task file:   <input type="file" onchange="jsReadFiles(this.files)"/>')
