@@ -118,7 +118,7 @@ function getextfromweb(models,task){
         }
         chaplist=chaplist.slice(task.lastchap,chaperlen)
         //downdata2file(models,task,chaplist)
-        multdowndata2file(models,task,chaplist)
+        multdowndata2file(models,task,chaplist,parseInt($("#multask").val()))
       }else{
         printlog("get chaper list with: "+rootpage)
         currentpage=rootpage.split('/').slice(0,-1).join('/')
@@ -131,8 +131,12 @@ function getextfromweb(models,task){
           }
           var alist=scope.find('a') //get the href from the scope
           for(var i=0;i<alist.length;i++){
-            tag=alist[i]
-            url=tag.attribs['href'].replace(/(&nbsp;|\s)/g,'')
+            try {
+              tag=alist[i]
+              url=tag.attribs['href'].replace(/(&nbsp;|\s)/g,'')
+            } catch (e) {
+              console.log(e.name + ": " + e.message);
+            }
             if (model.chapurl.test(url)){
               if(!/^https?/.test(url)){
                 if(/^\//.test(url)){
@@ -186,7 +190,7 @@ function getextfromweb(models,task){
   }
 
   /////
-  function multdowndata2file(models,task,chaplist,nums=8){
+  function multdowndata2file(models,task,chaplist,nums=10){
       var tasklen=chaplist.length
       var startask=0
       var endtask=0
@@ -256,9 +260,19 @@ function getextfromweb(models,task){
 
   getchaplist(models,task)
 }
-
-
-
+//======================================
+function searchfromweb(){
+  var searchword=$("#searchword").val()
+  if(searchword.length<=0){
+    alert("You must input vaild search words")
+    return
+  }
+  var source=$("#source").val()
+  var searchstr=searchword+" "+"site:"+source
+  bingsearch(searchstr,function(data){
+    $("#search").html(data)
+  })
+}
 //================================
 function printlog(msg){
   //console.log(msg)
@@ -267,8 +281,17 @@ function printlog(msg){
   })
 }
 
+function bingsearch(search,callback){
+  getpagefromURL("https://cn.bing.com/search?q="+search,function(data){
+    hobj=cheerio.parseHTML(data)
+    scope=cheerio("#b_results",hobj)
+    callback(scope.html())
+  })
+}
+
 //===================================
 $(document).ready(function(){
+  task=null
   var ua = navigator.userAgent
   if(/Android|iPhone/i.test(ua)){
     agentflag="Mobile"
@@ -279,12 +302,23 @@ $(document).ready(function(){
   document.addEventListener('click', ({target}) => {
     const cmd = target.dataset.cmd;
     if (cmd === 'start') {
-      getextfromweb(models,task);
+      if(task){
+        try{
+          getextfromweb(models,task);
+        }catch(e){
+          printlog(e.name + ": " + e.message);
+        }
+      }else{
+        alert("You must input vaild config file to init the task!")
+      }
+
     }
-    else if (cmd === 'close') {
-      chrome.runtime.sendMessage({
-        cmd: 'close-me'
-      });
+    else if (cmd === 'search') {
+      try{
+        searchfromweb();
+      }catch(e){
+        printlog(e.name + ": " + e.message);
+      }  
     }
     else if (cmd === 'restart') {
       window.location.reload();
@@ -298,4 +332,8 @@ $(document).ready(function(){
       $("#log").html("<pre>"+filedata+"</pre>")
     })
   }, false);
+  //init select
+  for(var key in models){
+    $("#source").append(`<option value=${models[key].web}>${key}</option>`)
+  }
 });
