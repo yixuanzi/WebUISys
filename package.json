@@ -1,0 +1,32 @@
+{
+  "name": "webuisys",
+  "version": "2.0.0",
+  "description": "Modern browser extension for web content extraction",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --mode development --watch",
+    "build": "vite build",
+    "build:background": "vite build --config vite.background.config.ts",
+    "build:popup": "vite build --config vite.popup.config.ts",
+    "build:txtonline": "vite build --config vite.txtonline.config.ts",
+    "build:save-images": "vite build --config vite.save-images.config.ts",
+    "build:all": "npm run build:background && npm run build:popup && npm run build:txtonline && npm run build:save-images",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "jszip": "^3.10.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.23",
+    "@types/chrome": "^0.0.258",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.3.3",
+    "vite": "^7.3.1"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "WebUiSys",
+  "version": "2.0.0",
+  "description": "Web content extraction tool for text and images",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_popup": "src/popup/index.html",
+    "default_title": "WebUiSys"
+  },
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "contextMenus",
+    "notifications",
+    "tabs",
+    "downloads",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src * data: blob: filesystem:;"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/txtonline/index.html",
+        "src/save-images/index.html"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
